@@ -1,78 +1,59 @@
 {
-    "kind": "template",
-    "properties": {
-      "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "parameters": {
-              "storageSkuType": {
-                "type": "string",
-                "defaultValue": "Standard_LRS",
-                "allowedValues": [
-                  "Standard_LRS",
-                  "Standard_ZRS",
-                  "Standard_GRS",
-                  "Standard_RAGRS",
-                  "Premium_LRS"
-                ]
-              },
-              "storageAccountName": {
-                  "type":"string"
-              }
-          },
-          "variables": {
-            "storageAccountApiVersion": "2019-04-01",
-            "storageAccountResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
-          },
-          "resources": [
-            {
-                "type": "Microsoft.Storage/storageAccounts",
-                "apiVersion": "[variables('storageAccountApiVersion')]",
-                "location": "[resourceGroup().location]",
-                "name": "[parameters('storageAccountName')]",
-                "kind": "StorageV2",
-                "sku": {
-                    "name": "[parameters('storageSkuType')]"
-                },
-                "properties": {
-                    "encryption": {
-                        "keySource": "Microsoft.Storage",
-                        "services": {
-                            "blob": {
-                                "enabled": true
-                            },
-                            "file": {
-                                "enabled": true
-                            }
-                        }
-                    },
-                    "isHnsEnabled": true,
-                    "supportsHttpsTrafficOnly": true
-                },
-                "tags": {
-                    "Environment-Type": "Test",
-                    "Project": "Track"
-                  }  
-            }
-          ],
-          "outputs": {
-		    "storage": {
-			    "value": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))).fullyQualifiedDomainName]",
-			    "type" : "string"
-		    }
-	    }
-      },
-      "resourceGroup": "TestRG",
-      "displayName": "ARM template to provision test environment storage account",
-      "parameters": {
-        "storageSkuType": {
-          "value": "[parameters('storageSkuType')]"
-        },
-        "storageAccountName":{
-            "value":"[parameters('storageAccountName')]"
-        }
-      }
-    },
-    "type": "Microsoft.Blueprint/blueprints/artifacts",
-    "name": "storage"
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"storageSkuType": {
+			"type": "string",
+			"defaultValue": "Standard_LRS",
+			"allowedValues": [
+				"Standard_LRS",
+				"Standard_ZRS",
+				"Standard_GRS",
+				"Standard_RAGRS",
+				"Premium_LRS"
+			]
+		},
+		"storageAccountName": {
+			"type": "string"
+		}
+	},
+	"variables": {
+		"storageAccountApiVersion": "2019-04-01",
+		"storageAccountResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+	},
+	"resources": [{
+		"type": "Microsoft.Storage/storageAccounts",
+		"apiVersion": "[variables('storageAccountApiVersion')]",
+		"location": "[resourceGroup().location]",
+		"name": "[parameters('storageAccountName')]",
+		"kind": "StorageV2",
+		"sku": {
+			"name": "[parameters('storageSkuType')]"
+		},
+		"properties": {
+			"encryption": {
+				"keySource": "Microsoft.Storage",
+				"services": {
+					"blob": {
+						"enabled": true
+					},
+					"file": {
+						"enabled": true
+					}
+				}
+			},
+			"isHnsEnabled": true,
+			"supportsHttpsTrafficOnly": true
+		},
+		"tags": {
+			"Environment-Type": "Test",
+			"Project": "Track"
+		}
+	}],
+	"outputs": {
+		"storage": {
+			"value": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))).fullyQualifiedDomainName]",
+			"type": "string"
+		}
+	}
 }
