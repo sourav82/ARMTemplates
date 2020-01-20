@@ -1,0 +1,333 @@
+{
+	"kind": "template",
+	"properties": {
+		"template": {
+			"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+			"contentVersion": "1.0.0.0",
+			"parameters": {
+				"administratorLogin": {
+					"type": "string"
+				},
+				"collation": {
+					"type": "string"
+				},
+				"databaseName": {
+					"type": "string"
+				},
+				"tier": {
+					"type": "string"
+				},
+				"skuSQLName": {
+					"type": "string"
+				},
+				"locationPrimary": {
+					"type": "string"
+				},
+				"maxSizeBytes": {
+					"type": "int"
+				},
+				"serverNamePrimary": {
+					"type": "string"
+				},
+				"zoneRedundant": {
+					"type": "bool",
+					"defaultValue": false
+				},
+				"licenseType": {
+					"type": "string",
+					"defaultValue": ""
+				},
+        "storageAccountName": {
+          "type":"string"
+        },
+				"keyVaultName": {
+					"type": "string",
+					"defaultValue": "rkfunctionapp-keyvault",
+					"metadata": {
+						"description": "Specifies the name of the key vault."
+					}
+				},
+				"enabledForDeployment": {
+					"type": "bool",
+					"defaultValue": false,
+					"allowedValues": [
+						true,
+						false
+					],
+					"metadata": {
+						"description": "Specifies whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault."
+					}
+				},
+				"enabledForDiskEncryption": {
+					"type": "bool",
+					"defaultValue": false,
+					"allowedValues": [
+						true,
+						false
+					],
+					"metadata": {
+						"description": "Specifies whether Azure Disk Encryption is permitted to retrieve secrets from the vault and unwrap keys."
+					}
+				},
+				"enabledForTemplateDeployment": {
+					"type": "bool",
+					"defaultValue": false,
+					"allowedValues": [
+						true,
+						false
+					],
+					"metadata": {
+						"description": "Specifies whether Azure Resource Manager is permitted to retrieve secrets from the key vault."
+					}
+				},
+				"tenantId": {
+					"type": "string",
+					"defaultValue": "[subscription().tenantId]",
+					"metadata": {
+						"description": "Specifies the Azure Active Directory tenant ID that should be used for authenticating requests to the key vault. Get it by using Get-AzSubscription cmdlet."
+					}
+				},
+				"objectId": {
+					"type": "string",
+					"defaultValue": "default-value-dummy",
+					"metadata": {
+						"description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+					}
+				},
+				"keysPermissions": {
+					"type": "array",
+					"defaultValue": [
+						"list"
+					],
+					"metadata": {
+						"description": "Specifies the permissions to keys in the vault. Valid values are: all, encrypt, decrypt, wrapKey, unwrapKey, sign, verify, get, list, create, update, import, delete, backup, restore, recover, and purge."
+					}
+				},
+				"secretsPermissions": {
+					"type": "array",
+					"defaultValue": [
+						"list", "get"
+					],
+					"metadata": {
+						"description": "Specifies the permissions to secrets in the vault. Valid values are: all, get, list, set, delete, backup, restore, recover, and purge."
+					}
+				},
+				"skuName": {
+					"type": "string",
+					"defaultValue": "Standard",
+					"allowedValues": [
+						"Standard",
+						"Premium"
+					],
+					"metadata": {
+						"description": "Specifies whether the key vault is a standard vault or a premium vault."
+					}
+				},
+				"dbpasswordsecretName": {
+					"type": "string",
+					"defaultValue": "rkfunctionappdbpassword"
+				},
+        "storageSkuType": {
+                "type": "string",
+                "defaultValue": "Standard_LRS",
+                "allowedValues": [
+                  "Standard_LRS",
+                  "Standard_ZRS",
+                  "Standard_GRS",
+                  "Standard_RAGRS",
+                  "Premium_LRS"
+                ]
+              }
+			},
+			"variables": {
+				"sqlserverName": "[concat(parameters('serverNamePrimary'), '-', uniqueString(resourceGroup().id))]",
+				"databaseName": "[concat(parameters('databaseName'))]",
+				"keyvaultName": "[concat(parameters('keyVaultName'))]",
+				"dbpasswordsecretName": "rkfunctionappdbpassword"
+			},
+			"resources": [{
+					"apiVersion": "2018-05-01",
+					"name": "linkedTemplate-keyvault",
+					"type": "Microsoft.Resources/deployments",
+					"properties": {
+						"mode": "incremental",
+						"templateLink": {
+							"uri": "[uri(deployment().properties.templateLink.uri, 'keyvault.json')]",
+							"contentVersion": "1.0.0.0"
+						},
+						"parameters": {
+							"keyVaultName": {
+								"value": "[variables('keyvaultName')]"
+							},
+							"objectId": {
+								"value": "[parameters('objectId')]"
+							},
+							"enabledForTemplateDeployment": {
+								"value": true
+							}
+						}
+					}
+				},
+        {
+					"apiVersion": "2018-05-01",
+					"name": "linkedTemplate-storage",
+					"type": "Microsoft.Resources/deployments",
+					"properties": {
+						"mode": "incremental",
+						"templateLink": {
+							"uri": "[uri(deployment().properties.templateLink.uri, 'storage.json')]",
+							"contentVersion": "1.0.0.0"
+						},
+						"parameters": {
+						"storageSkuType": {
+                "value": "[parameters('storageSkuType')]"
+              },
+              "storageAccountName": {
+                "value": "[parameters('storageAccountName')]"
+              }
+						}
+					}
+				},
+				{
+					"apiVersion": "2018-05-01",
+					"name": "linkedTemplate-sqlserver",
+					"type": "Microsoft.Resources/deployments",
+					"dependsOn": ["linkedTemplate-keyvault", "linkedTemplate-storage"],
+					"properties": {
+						"mode": "incremental",
+						"templateLink": {
+							"uri": "[uri(deployment().properties.templateLink.uri, 'sqlserver.json')]",
+							"contentVersion": "1.0.0.0"
+						},
+						"parameters": {
+							"serverNamePrimary": {
+								"value": "[parameters('serverNamePrimary')]"
+							},
+							"databaseName": {
+								"value": "[parameters('databaseName')]"
+							},
+							"administratorLogin": {
+								"value": "[parameters('administratorLogin')]"
+							},
+							"sqlPassword": {
+								"reference": {
+									"keyVault": {
+										"id": "[reference('linkedTemplate-keyvault').outputs.rkkeyvault.value]"
+									},
+									"secretName": "[variables('dbpasswordsecretName')]"
+								}
+							},
+							"locationPrimary": {
+								"value": "[parameters('locationPrimary')]"
+							},
+							"collation": {
+								"value": "[parameters('collation')]"
+							},
+							"tier": {
+								"value": "[parameters('tier')]"
+							},
+							"maxSizeBytes": {
+								"value": "[parameters('maxSizeBytes')]"
+							},
+							"zoneRedundant": {
+								"value": "[parameters('zoneRedundant')]"
+							},
+							"skuSQLName": {
+								"value": "[parameters('skuSQLName')]"
+							},
+							"licenseType": {
+								"value": "[parameters('licenseType')]"
+							},
+              "storageAccountName": {
+                "value": "[parameters('storageAccountName')]"
+              }
+						}
+					}
+				}
+			],
+			"outputs": {
+				"sqlSvrFqdn": {
+					"type": "string",
+					"value": "[reference('linkedTemplate-sqlserver').outputs.dbfqdn.value]"
+				},
+				"resourceGroupName": {
+					"type": "string",
+					"value": "[resourceGroup().Name]"
+				}
+			}
+		},
+		"resourceGroup": "TestRG",
+		"displayName": "ARM template to provision test environment resources",
+    "parameters":{
+      "administratorLogin": {
+				"value": "[parameters('administratorLogin')]"
+			},
+			"collation": {
+				"value": "[parameters('collation')]"
+			},
+			"databaseName": {
+				"value": "[parameters('databaseName')]"
+			},
+			"tier": {
+				"value": "[parameters('tier')]"
+			},
+			"skuSQLName": {
+				"value": "[parameters('skuSQLName')]"
+			},
+			"locationPrimary": {
+				"value": "[parameters('locationPrimary')]"
+			},
+			"maxSizeBytes": {
+				"value": "[parameters('maxSizeBytes')]"
+			},
+			"serverNamePrimary": {
+				"value": "[parameters('serverNamePrimary')]"
+			},
+			"zoneRedundant": {
+				"value": "[parameters('zoneRedundant')]"
+			},
+			"licenseType": {
+				"value": "[parameters('licenseType')]"
+			},
+			"storageAccountName": {
+				"value": "[parameters('storageAccountName')]"
+			},
+			"keyVaultName": {
+				"value": "[parameters('keyVaultName')]"
+			},
+			"enabledForDeployment": {
+				"value": "[parameters('enabledForDeployment')]"
+			},
+			"enabledForDiskEncryption": {
+				"value": "[parameters('enabledForDiskEncryption')]"
+			},
+			"enabledForTemplateDeployment": {
+				"value": "[parameters('enabledForTemplateDeployment')]"
+			},
+			"tenantId": {
+				"value": "[parameters('tenantId')]"
+			},
+			"objectId": {
+				"value": "[parameters('objectId')]"
+			},
+			"keysPermissions": {
+				"value": "[parameters('keysPermissions')]"
+			},
+			"secretsPermissions": {
+				"value": "[parameters('secretsPermissions')]"
+			},
+			"skuName": {
+				"value": "[parameters('skuName')]"
+			},
+			"dbpasswordsecretName": {
+			"value": "[parameters('dbpasswordsecretName')]"
+			},
+			"storageSkuType": {
+				"value": "[parameters('storageSkuType')]"
+			}
+
+    }
+	},
+	"type": "Microsoft.Blueprint/blueprints/artifacts",
+	"name": "artifact"
+}
